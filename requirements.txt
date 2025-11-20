@@ -1,0 +1,19 @@
+# Core dependencies
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# LangChain core
+langchain-core>=0.1.0
+
+# Metapub for PubMed retrieval
+metapub>=0.4.2
+
+# LLM Provider Options (install one or more)
+# OpenAI (recommended default)
+langchain-openai>=0.0.1
+
+# Anthropic Claude models
+langchain-anthropic>=0.1.0
+
+# Google Gemini models
+langchain-google-genai>=0.0.1
