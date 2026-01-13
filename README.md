@@ -319,8 +319,11 @@ Well-established in vitro or in vivo functional studies show no damaging effect 
 
 ### 1. HTML Report
 ```
-output_report/2_162279995_C_G_GRCh38.html
+output_report/chr_pos_ref_alt_version.html
 ```
+
+example output: 2_162279995_C_G_GRCh38.html
+
 - Professional, interactive web page
 - Contains all analysis results
 - Mobile-responsive design
@@ -329,8 +332,11 @@ output_report/2_162279995_C_G_GRCh38.html
 
 ### 2. PDF Report
 ```
-output_report/2_162279995_C_G_GRCh38.pdf
+output_report/chr_pos_ref_alt_version.html
 ```
+
+example output: report/2_162279995_C_G_GRCh38.pdf
+
 - Print-ready PDF document
 - Same content as HTML report
 - Suitable for archiving and sharing
