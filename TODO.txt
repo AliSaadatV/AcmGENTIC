@@ -1,3 +1,0 @@
-1. add support for other models (anthropic, gemini)
-2. output: 
-3. parsing arguments: chrom, pos, ref, alt,  model, pdf_path [for the functional papers], output [have an option to return a dictionay or make a html report]

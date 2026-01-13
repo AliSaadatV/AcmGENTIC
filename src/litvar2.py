@@ -1,13 +1,20 @@
 """
 LitVar2 and PubMed literature retrieval functionality.
+
+Includes PDF URL discovery and download capabilities using:
+- metapub FindIt for open-access PDF discovery
+- Unpaywall API for DOI-based open access lookup
 """
 
+import os
 import time
 import requests
-from typing import List, Dict, Set
+import urllib.request
+from typing import List, Dict, Set, Optional
 from urllib.parse import quote
+from pathlib import Path
 
-from metapub import PubMedFetcher
+from metapub import PubMedFetcher, FindIt
 
 from .config import LITVAR2_API_BASE, ENTREZ_BASE, NCBI_API_KEY, NCBI_EMAIL
 from .utils import VariantInfo, CandidatePaper
@@ -157,3 +164,177 @@ def build_candidate_list(pmids: Set[str]) -> List[CandidatePaper]:
     papers_dict = pubmed_fetch_details(pmid_list)
 
     return list(papers_dict.values())
+
+
+# =============================================================================
+# PDF URL Discovery and Download Functions
+# =============================================================================
+
+
+def check_open_access_from_doi(doi: str) -> str:
+    """
+    Check if a DOI is open access using Unpaywall API.
+    
+    Parameters
+    ----------
+    doi : str
+        The DOI to check
+        
+    Returns
+    -------
+    str
+        URL to open access PDF if available, empty string otherwise
+    """
+    if not doi:
+        return ""
+
+    url = f"https://api.unpaywall.org/v2/{doi}"
+    params = {"email": NCBI_EMAIL}
+
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        if r.status_code != 200:
+            return ""
+
+        data = r.json()
+        if data.get("is_oa"):
+            # Try to get the best OA location
+            best_oa = data.get("best_oa_location", {})
+            if best_oa:
+                pdf_url = best_oa.get("url_for_pdf") or best_oa.get("url")
+                if pdf_url:
+                    return pdf_url
+            return data.get("doi_url", "")
+        return ""
+
+    except Exception:
+        return ""
+
+
+def fetch_pdf_url(pmid: str) -> str:
+    """
+    Fetch PDF URL for a PMID using multiple methods.
+    
+    Tries:
+    1. metapub FindIt for direct PDF discovery
+    2. Unpaywall API via DOI for open access
+    
+    Parameters
+    ----------
+    pmid : str
+        PubMed ID
+        
+    Returns
+    -------
+    str
+        URL to PDF if found, empty string otherwise
+    """
+    try:
+        # Try metapub FindIt first
+        finder = FindIt(pmid)
+        if finder.url:
+            return finder.url
+        
+        # Fallback: try Unpaywall via DOI
+        article = FETCHER.article_by_pmid(pmid)
+        if article and hasattr(article, "doi") and article.doi:
+            url = check_open_access_from_doi(article.doi)
+            if url:
+                return url
+        
+        return ""
+    except Exception as e:
+        print(f"   Warning: Failed to find PDF URL for PMID {pmid}: {e}")
+        return ""
+
+
+def download_pdf(pmid: str, pdf_dir: str, url: Optional[str] = None) -> Optional[str]:
+    """
+    Download PDF for a PMID to specified directory.
+    
+    Parameters
+    ----------
+    pmid : str
+        PubMed ID
+    pdf_dir : str
+        Directory to save PDFs
+    url : str, optional
+        Pre-fetched PDF URL. If None, will attempt to discover URL.
+        
+    Returns
+    -------
+    str or None
+        Path to downloaded PDF if successful, None otherwise
+    """
+    pdf_path = Path(pdf_dir) / f"{pmid}.pdf"
+    
+    # Check if already exists
+    if pdf_path.exists():
+        print(f"   [→] PDF already exists for PMID {pmid}")
+        return str(pdf_path)
+    
+    # Get URL if not provided
+    if url is None:
+        url = fetch_pdf_url(pmid)
+    
+    if not url:
+        print(f"   [✗] No PDF URL found for PMID {pmid}")
+        return None
+    
+    try:
+        # Ensure directory exists
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Download with headers to avoid being blocked
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            with open(pdf_path, 'wb') as f:
+                f.write(response.read())
+        
+        print(f"   [✓] Downloaded PDF for PMID {pmid}")
+        return str(pdf_path)
+        
+    except Exception as e:
+        print(f"   [✗] Failed to download PDF for PMID {pmid}: {e}")
+        return None
+
+
+def download_pdfs_for_papers(
+    pmids: List[str],
+    pdf_dir: str,
+    max_downloads: Optional[int] = None,
+) -> Dict[str, str]:
+    """
+    Download PDFs for multiple PMIDs.
+    
+    Parameters
+    ----------
+    pmids : list of str
+        List of PubMed IDs
+    pdf_dir : str
+        Directory to save PDFs
+    max_downloads : int, optional
+        Maximum number of PDFs to download. If None, download all.
+        
+    Returns
+    -------
+    dict
+        Mapping from PMID to PDF path for successful downloads
+    """
+    downloaded = {}
+    
+    for i, pmid in enumerate(pmids):
+        if max_downloads is not None and i >= max_downloads:
+            break
+            
+        pdf_path = download_pdf(pmid, pdf_dir)
+        if pdf_path:
+            downloaded[pmid] = pdf_path
+        
+        # Rate limiting
+        time.sleep(0.5)
+    
+    return downloaded

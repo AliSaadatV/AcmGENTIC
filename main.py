@@ -42,7 +42,12 @@ from dotenv import load_dotenv
 
 from src.vep import vep_annotate_variant
 from src.utils import VariantInfo, build_variant_label, enrich_with_vep
-from src.litvar2 import query_litvar2, build_candidate_list
+from src.litvar2 import (
+    query_litvar2,
+    build_candidate_list,
+    download_pdfs_for_papers,
+    fetch_pdf_url,
+)
 from src.filtering import llm_filter_functional_papers, llm_extract_experiments
 from src.assessment import integrate_evidence
 from src.reporting import print_report
@@ -56,6 +61,8 @@ def analyze_variant(
     alt: str,
     assembly: str = "GRCh38",
     pdf_path: Optional[str] = None,
+    download_pdfs: bool = True,
+    max_pdf_downloads: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Run the full PS3/BS3 functional evidence pipeline for a single variant,
@@ -75,6 +82,10 @@ def analyze_variant(
         Genome assembly version (default: "GRCh38")
     pdf_path : str, optional
         Directory to save functional paper PDFs (default: None)
+    download_pdfs : bool, optional
+        Whether to attempt downloading PDFs for functional papers (default: True)
+    max_pdf_downloads : int, optional
+        Maximum number of PDFs to download. If None, download all available.
 
     Returns
     -------
@@ -118,14 +129,35 @@ def analyze_variant(
     candidate_papers = build_candidate_list(pmids)
     print(f"   Retrieved details for {len(candidate_papers)} papers")
 
-    # 4. Filter for functional papers
+    # 4. Filter for functional papers (high-sensitivity screening)
     print("\nStep 4: Filtering for functionally relevant papers...")
     functional_papers = llm_filter_functional_papers(candidate_papers, variant_label)
     print(f"   Identified {len(functional_papers)} functionally relevant papers")
 
-    # 5. Extract experiments
+    # 4b. Download PDFs for functional papers (if enabled)
+    downloaded_pdfs = {}
+    if download_pdfs and pdf_path and functional_papers:
+        print("\nStep 4b: Downloading PDFs for functional papers...")
+        functional_pmids = [fp.pmid for fp in functional_papers]
+        downloaded_pdfs = download_pdfs_for_papers(
+            functional_pmids,
+            pdf_path,
+            max_downloads=max_pdf_downloads,
+        )
+        print(f"   Downloaded/found {len(downloaded_pdfs)} PDFs")
+        
+        # Update functional papers with PDF paths
+        for fp in functional_papers:
+            if fp.pmid in downloaded_pdfs:
+                fp.pdf_path = downloaded_pdfs[fp.pmid]
+
+    # 5. Extract experiments (uses PDFs when available)
     print("\nStep 5: Extracting functional experiments...")
-    experiments = llm_extract_experiments(functional_papers, variant_label)
+    experiments = llm_extract_experiments(
+        functional_papers,
+        variant_label,
+        pdf_dir=pdf_path if download_pdfs else None,
+    )
     print(f"   Extracted {len(experiments)} experiments")
 
     # 6. Integrate evidence
@@ -142,6 +174,7 @@ def analyze_variant(
         "functional_papers": [asdict(fp) for fp in functional_papers],
         "experiments": [asdict(e) for e in experiments],
         "assessment": asdict(assessment),
+        "downloaded_pdfs": downloaded_pdfs,
     }
 
 
@@ -216,6 +249,24 @@ Examples:
         help="Directory to save functional paper PDFs (default: func_papers_pdf)"
     )
     parser.add_argument(
+        "--download-pdfs",
+        action="store_true",
+        default=True,
+        help="Download PDFs for functional papers (default: True)"
+    )
+    parser.add_argument(
+        "--no-download-pdfs",
+        action="store_false",
+        dest="download_pdfs",
+        help="Skip PDF download, use abstract-only extraction"
+    )
+    parser.add_argument(
+        "--max-pdf-downloads",
+        type=int,
+        default=None,
+        help="Maximum number of PDFs to download per analysis (default: unlimited)"
+    )
+    parser.add_argument(
         "--output-format",
         type=str,
         choices=["html", "dict"],
@@ -251,6 +302,8 @@ Examples:
         alt=args.alt,
         assembly=args.assembly,
         pdf_path=str(pdf_dir),
+        download_pdfs=args.download_pdfs,
+        max_pdf_downloads=args.max_pdf_downloads,
     )
 
     # Handle output
