@@ -84,11 +84,11 @@ cp .env.example .env
 
 ### 2. Choose LLM Provider
 
-#### OpenAI (Recommended)
+#### OpenAI 
 ```env
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-your-api-key-here
-LLM_MODEL=gpt-4o-mini
+LLM_MODEL=gpt-4o-mini (or other models)
 ```
 Get key from: https://platform.openai.com/api-keys
 
@@ -96,7 +96,7 @@ Get key from: https://platform.openai.com/api-keys
 ```env
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-your-api-key-here
-LLM_MODEL=claude-3-5-sonnet-20241022
+LLM_MODEL=claude-3-5-sonnet-20241022 (or other models)
 ```
 Get key from: https://console.anthropic.com/
 
@@ -104,7 +104,7 @@ Get key from: https://console.anthropic.com/
 ```env
 LLM_PROVIDER=gemini
 GOOGLE_API_KEY=your-google-api-key
-LLM_MODEL=gemini-1.5-flash
+LLM_MODEL=gemini-1.5-flash (or other models)
 ```
 Get key from: https://makersuite.google.com/app/apikey
 
@@ -500,20 +500,6 @@ The pipeline follows this automated workflow:
 
 ---
 
-## Supported LLM Providers
-
-| Provider | Models | PDF Support | Speed | Cost |
-|----------|--------|-------------|-------|------|
-| **OpenAI** | gpt-4o, gpt-4-turbo, gpt-4o-mini | ✓ File upload | Fast | Moderate |
-| **Anthropic** | claude-3-opus, claude-3-sonnet, claude-3-haiku | ✓ Base64 | Moderate | Moderate |
-| **Google Gemini** | gemini-1.5-pro, gemini-1.5-flash | ✓ File upload | Fast | Low |
-
-All providers now support full-text PDF extraction for better experiment identification.
-
-Recommended: **gpt-4o-mini** (fast and cost-effective)
-
----
-
 ## Environment Variables
 
 ### Required
@@ -565,41 +551,12 @@ Recommended: **gpt-4o-mini** (fast and cost-effective)
 ## Performance Tips
 
 1. **First run is slower** due to API calls and PDF downloads
-2. **Model selection affects speed/accuracy**:
-   - Fast: gemini-1.5-flash
-   - Balanced: gpt-4o-mini
-   - Most accurate: claude-3-opus
+2. **Model selection affects speed/accuracy**
 3. **Batch processing**: Create scripts to analyze multiple variants
 4. **Cache results**: Save HTML reports for documentation
 
 ---
 
-## Security Notes
-
-- ⚠️ **Never commit `.env` file** - contains sensitive API keys
-- Use `.env.example` as template for other developers
-- `.gitignore` is configured to exclude `.env` files
-- Keep all API keys confidential
-
----
-
-## Contributing
-
-To extend the pipeline:
-
-1. Add new modules to `src/`
-2. Update `src/__init__.py` if adding exports
-3. Ensure all modules have docstrings
-4. Test with multiple variants
-5. Document changes in README
-
----
-
-## License
-
-[Add your license here]
-
----
 
 ## Citation
 
@@ -610,25 +567,5 @@ AcmGENTIC: PS3/BS3 Functional Evidence Analysis Pipeline
 Available at: https://github.com/AliSaadatV/AcmGENTIC
 ```
 
----
 
-## Support
 
-For issues or questions:
-1. Check the troubleshooting section
-2. Review examples in `examples.py`
-3. Check `.env` configuration
-4. Review error messages carefully
-5. Open an issue on GitHub
-
----
-
-## Changelog
-
-### v1.0.0 (Current)
-- Initial release
-- Multi-provider LLM support (OpenAI, Anthropic, Gemini)
-- HTML report generation
-- Command-line interface with argument parsing
-- Batch analysis capabilities
-- Python API for programmatic use
