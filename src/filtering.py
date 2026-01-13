@@ -722,19 +722,84 @@ def _extract_from_pdf(
     """
     Extract experiments from full-text PDF using the comprehensive schema.
     
-    Note: This requires OpenAI API with file upload support.
-    For other providers, falls back to abstract extraction.
+    Supports multiple LLM providers:
+    - OpenAI: Uses file upload with responses API
+    - Anthropic/Claude: Uses base64-encoded PDF with messages API
+    - Gemini: Uses file upload with generative AI API
     """
     from .config import LLM_PROVIDER
     
-    # PDF extraction currently only supported with OpenAI
-    if LLM_PROVIDER != "openai":
+    # Dispatch to provider-specific implementation
+    if LLM_PROVIDER == "openai":
+        return _extract_from_pdf_openai(pmid, variant_label, pdf_path, title)
+    elif LLM_PROVIDER == "anthropic":
+        return _extract_from_pdf_anthropic(pmid, variant_label, pdf_path, title)
+    elif LLM_PROVIDER == "gemini":
+        return _extract_from_pdf_gemini(pmid, variant_label, pdf_path, title)
+    else:
         print(f"   Note: PDF extraction not supported for {LLM_PROVIDER}, using abstract")
         return []
+
+
+def _parse_pdf_extraction_response(
+    pmid: str,
+    content: str,
+) -> List[FunctionalExperiment]:
+    """
+    Parse JSON response from PDF extraction and convert to FunctionalExperiment objects.
     
+    Common helper for all providers.
+    """
+    # Clean up potential markdown code blocks
+    content = re.sub(r"```(?:json)?", "", content).strip()
+    content = content.replace("```", "")
+    
+    parsed = json.loads(content)
+    
+    experiments = []
+    for exp in parsed.get("experiments", []):
+        result = exp.get("result", {})
+        
+        # Map direction to evaluation
+        direction = result.get("direction", "unclear")
+        if direction == "functionally_abnormal":
+            evaluation = "supports_pathogenic"
+            effect_dir = "loss_of_function"
+        elif direction == "functionally_normal":
+            evaluation = "supports_benign"
+            effect_dir = "no_effect_vs_wildtype"
+        else:
+            evaluation = "ambiguous"
+            effect_dir = "ambiguous"
+        
+        experiments.append(
+            FunctionalExperiment(
+                pmid=pmid,
+                assay_type=exp.get("assay", "") or "",
+                system=exp.get("system", "") or "",
+                readout=exp.get("readout", "") or "",
+                effect_direction=effect_dir,
+                magnitude_stats=result.get("effect_size_and_stats", "") or "",
+                controls_validity=exp.get("controls_and_validation", "") or "",
+                authors_conclusion=exp.get("authors_conclusion", "") or "",
+                evaluation=evaluation,
+            )
+        )
+    
+    return experiments
+
+
+def _extract_from_pdf_openai(
+    pmid: str,
+    variant_label: str,
+    pdf_path: str,
+    title: str,
+) -> List[FunctionalExperiment]:
+    """Extract experiments from PDF using OpenAI's file upload API."""
     try:
         import os
         from openai import OpenAI
+        from .config import LLM_MODEL
         
         client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         
@@ -742,7 +807,6 @@ def _extract_from_pdf(
         with open(pdf_path, "rb") as f:
             uploaded_file = client.files.create(file=f, purpose="assistants")
         
-        # Build user prompt
         user_prompt = f"""TARGET_VARIANT: {variant_label}
 
 Attached: 1 full-text PDF paper (PMID: {pmid}, Title: {title}).
@@ -755,9 +819,6 @@ Follow the system instructions to:
 Return ONLY valid JSON that matches the schema exactly.
 Do NOT add any text outside the JSON object.
 """
-        
-        # Call API with PDF
-        from .config import LLM_MODEL
         
         resp = client.responses.create(
             model=LLM_MODEL,
@@ -786,92 +847,35 @@ Do NOT add any text outside the JSON object.
             print(f"   Warning: Empty response for PDF extraction PMID {pmid}")
             return []
         
-        parsed = json.loads(resp.output_text)
-        
-        # Convert structured output to FunctionalExperiment objects
-        experiments = []
-        for exp in parsed.get("experiments", []):
-            result = exp.get("result", {})
-            
-            # Map direction to evaluation
-            direction = result.get("direction", "unclear")
-            if direction == "functionally_abnormal":
-                evaluation = "supports_pathogenic"
-                effect_dir = "loss_of_function"  # Could be gain too, simplifying
-            elif direction == "functionally_normal":
-                evaluation = "supports_benign"
-                effect_dir = "no_effect_vs_wildtype"
-            else:
-                evaluation = "ambiguous"
-                effect_dir = "ambiguous"
-            
-            experiments.append(
-                FunctionalExperiment(
-                    pmid=pmid,
-                    assay_type=exp.get("assay", "") or "",
-                    system=exp.get("system", "") or "",
-                    readout=exp.get("readout", "") or "",
-                    effect_direction=effect_dir,
-                    magnitude_stats=result.get("effect_size_and_stats", "") or "",
-                    controls_validity=exp.get("controls_and_validation", "") or "",
-                    authors_conclusion=exp.get("authors_conclusion", "") or "",
-                    evaluation=evaluation,
-                )
-            )
-        
-        return experiments
+        return _parse_pdf_extraction_response(pmid, resp.output_text)
         
     except Exception as e:
-        print(f"   Warning: PDF extraction failed for PMID {pmid}: {e}")
+        print(f"   Warning: OpenAI PDF extraction failed for PMID {pmid}: {e}")
         return []
 
 
-def extract_experiments_from_pdf_structured(
+def _extract_from_pdf_anthropic(
     pmid: str,
     variant_label: str,
     pdf_path: str,
-    title: str = "",
-) -> Dict[str, Any]:
+    title: str,
+) -> List[FunctionalExperiment]:
     """
-    Extract experiments from PDF and return the full structured response.
+    Extract experiments from PDF using Anthropic's Claude API with base64 encoding.
     
-    This returns the complete JSON structure including variant_match,
-    overall_evidence, and summary fields - useful for detailed analysis.
-    
-    Parameters
-    ----------
-    pmid : str
-        PubMed ID
-    variant_label : str  
-        Variant identifier string
-    pdf_path : str
-        Path to PDF file
-    title : str, optional
-        Paper title
-        
-    Returns
-    -------
-    dict
-        Full structured extraction result or error dict
+    Claude supports PDF files via base64-encoded document content type.
     """
-    from .config import LLM_PROVIDER, LLM_MODEL
-    
-    if LLM_PROVIDER != "openai":
-        return {
-            "error": f"PDF extraction not supported for provider: {LLM_PROVIDER}",
-            "pmid": pmid,
-            "variant_label": variant_label,
-        }
-    
     try:
         import os
-        from openai import OpenAI
+        import base64
+        from anthropic import Anthropic
+        from .config import LLM_MODEL
         
-        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         
-        # Upload PDF
+        # Read and encode PDF as base64
         with open(pdf_path, "rb") as f:
-            uploaded_file = client.files.create(file=f, purpose="assistants")
+            pdf_data = base64.standard_b64encode(f.read()).decode("utf-8")
         
         user_prompt = f"""TARGET_VARIANT: {variant_label}
 
@@ -883,46 +887,110 @@ Follow the system instructions to:
 - Summarize PS3/BS3 evidence and strength.
 
 Return ONLY valid JSON that matches the schema exactly.
+Do NOT add any text outside the JSON object.
 """
         
-        resp = client.responses.create(
+        resp = client.messages.create(
             model=LLM_MODEL,
-            instructions=PDF_EXTRACTION_SYSTEM_PROMPT,
-            input=[
+            max_tokens=8192,
+            system=PDF_EXTRACTION_SYSTEM_PROMPT,
+            messages=[
                 {
                     "role": "user",
                     "content": [
-                        {"type": "input_file", "file_id": uploaded_file.id},
-                        {"type": "input_text", "text": user_prompt},
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "application/pdf",
+                                "data": pdf_data,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": user_prompt,
+                        },
                     ],
                 }
             ],
-            text={
-                "format": {
-                    "type": "json_schema",
-                    "name": "variant_functional_summary",
-                    "strict": True,
-                    "schema": VARIANT_FUNCTIONAL_SCHEMA,
-                }
-            },
-            store=False,
         )
         
-        if not getattr(resp, "output_text", None):
-            return {
-                "error": "Empty model output",
-                "pmid": pmid,
-                "variant_label": variant_label,
-            }
+        # Extract text content from response
+        content = ""
+        for block in resp.content:
+            if hasattr(block, "text"):
+                content += block.text
         
-        result = json.loads(resp.output_text)
-        result["pmid"] = pmid
-        result["model"] = LLM_MODEL
-        return result
+        if not content:
+            print(f"   Warning: Empty response for PDF extraction PMID {pmid}")
+            return []
+        
+        return _parse_pdf_extraction_response(pmid, content)
         
     except Exception as e:
-        return {
-            "error": str(e),
-            "pmid": pmid,
-            "variant_label": variant_label,
-        }
+        print(f"   Warning: Anthropic PDF extraction failed for PMID {pmid}: {e}")
+        return []
+
+
+def _extract_from_pdf_gemini(
+    pmid: str,
+    variant_label: str,
+    pdf_path: str,
+    title: str,
+) -> List[FunctionalExperiment]:
+    """
+    Extract experiments from PDF using Google's Gemini API with file upload.
+    
+    Gemini supports PDF files via the upload_file method.
+    """
+    try:
+        import os
+        import google.generativeai as genai
+        from .config import LLM_MODEL
+        
+        # Configure the API
+        genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+        
+        # Upload the PDF file
+        uploaded_file = genai.upload_file(pdf_path, mime_type="application/pdf")
+        
+        user_prompt = f"""TARGET_VARIANT: {variant_label}
+
+Attached: 1 full-text PDF paper (PMID: {pmid}, Title: {title}).
+
+Follow the system instructions to:
+- Match the TARGET_VARIANT to variant labels in the paper,
+- Extract all plausible variant-level functional experiments for that variant,
+- Summarize PS3/BS3 evidence and strength.
+
+Return ONLY valid JSON that matches the schema exactly.
+Do NOT add any text outside the JSON object.
+"""
+        
+        # Create the model and generate content
+        model = genai.GenerativeModel(
+            model_name=LLM_MODEL,
+            system_instruction=PDF_EXTRACTION_SYSTEM_PROMPT,
+        )
+        
+        resp = model.generate_content(
+            [uploaded_file, user_prompt],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                response_mime_type="application/json",
+            ),
+        )
+        
+        content = resp.text
+        
+        if not content:
+            print(f"   Warning: Empty response for PDF extraction PMID {pmid}")
+            return []
+        
+        return _parse_pdf_extraction_response(pmid, content)
+        
+    except Exception as e:
+        print(f"   Warning: Gemini PDF extraction failed for PMID {pmid}: {e}")
+        return []
+
+

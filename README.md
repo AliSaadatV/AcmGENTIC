@@ -46,10 +46,31 @@ Or install individually:
 pip install requests langchain-core metapub python-dotenv
 
 # Choose one or more LLM providers:
-pip install langchain-openai              # OpenAI
-pip install langchain-anthropic           # Anthropic
-pip install langchain-google-genai         # Google Gemini
+pip install langchain-openai openai                    # OpenAI
+pip install langchain-anthropic anthropic              # Anthropic
+pip install langchain-google-genai google-generativeai # Google Gemini
 ```
+
+### PDF Report Generation (Optional)
+
+PDF output requires WeasyPrint, which has system library dependencies:
+
+**macOS:**
+```bash
+brew install cairo pango gdk-pixbuf libffi
+pip install weasyprint
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+pip install weasyprint
+```
+
+**Windows:**
+See [WeasyPrint Windows installation](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#windows)
+
+**Note:** PDF generation is optional. The pipeline will still generate HTML reports if WeasyPrint is not installed.
 
 ---
 
@@ -121,11 +142,14 @@ python main.py --chrom 2 --pos 162279995 --ref C --alt G
 
 #### Optional Arguments
 ```
---assembly {GRCh38,GRCh37}  Genome assembly (default: GRCh38)
---model MODEL               Override LLM model from .env
---pdf-path PATH             Directory for PDF downloads (default: func_papers_pdf)
---output-format {html,dict} Output format (default: html)
---output-dir PATH           Output directory (default: output_report)
+--assembly {GRCh38,GRCh37}          Genome assembly (default: GRCh38)
+--model MODEL                       Override LLM model from .env
+--pdf-path PATH                     Directory for PDF downloads (default: func_papers_pdf)
+--output-format {html,pdf,both,dict} Output format (default: both)
+--output-dir PATH                   Output directory (default: output_report)
+--no-interactive                    Disable interactive prompts (e.g., manual PDF download)
+--no-download-pdfs                  Skip PDF download, use abstract-only extraction
+--max-pdf-downloads N               Maximum number of PDFs to download
 ```
 
 #### CLI Examples
@@ -240,10 +264,14 @@ LLM_PS3_BS3/
 │   ├── utils.py             # Data classes and utilities
 │   ├── vep.py               # VEP annotation
 │   ├── litvar2.py           # LitVar2 and PubMed retrieval
-│   ├── filtering.py         # LLM-based filtering
+│   ├── filtering.py         # LLM-based filtering (supports PDF extraction for all providers)
 │   ├── assessment.py        # PS3/BS3 decision logic
-│   ├── html_report.py       # HTML report generation
-│   └── reporting.py         # Console reporting
+│   ├── html_report.py       # HTML and PDF report generation
+│   ├── reporting.py         # Console reporting
+│   └── not_used/            # Unused/archived code for reference
+│
+├── output_report/           # Generated reports (HTML/PDF)
+├── func_papers_pdf/         # Downloaded literature PDFs
 │
 └── notebooks/               # Jupyter notebooks (optional)
 ```
@@ -257,10 +285,10 @@ LLM_PS3_BS3/
 | **src/llm.py** | Multi-provider LLM initialization (OpenAI, Anthropic, Gemini) |
 | **src/utils.py** | Data classes: VariantInfo, CandidatePaper, FunctionalPaper, etc. |
 | **src/vep.py** | Ensembl VEP REST API integration for variant annotation |
-| **src/litvar2.py** | LitVar2 and PubMed literature retrieval |
-| **src/filtering.py** | LLM-based paper filtering and experiment extraction |
+| **src/litvar2.py** | LitVar2 and PubMed literature retrieval + manual PDF workflow |
+| **src/filtering.py** | LLM-based paper filtering and PDF experiment extraction (all providers) |
 | **src/assessment.py** | Evidence integration and PS3/BS3 decision logic |
-| **src/html_report.py** | HTML report generation with professional styling |
+| **src/html_report.py** | HTML and PDF report generation (teal/green theme) |
 | **src/reporting.py** | Console report formatting and output |
 
 ---
@@ -289,7 +317,7 @@ Well-established in vitro or in vivo functional studies show no damaging effect 
 
 ## Output Formats
 
-### 1. HTML Report (Default)
+### 1. HTML Report
 ```
 output_report/2_162279995_C_G_GRCh38.html
 ```
@@ -299,7 +327,22 @@ output_report/2_162279995_C_G_GRCh38.html
 - Viewable in any web browser
 - Easy to share and archive
 
-### 2. Dictionary Format
+### 2. PDF Report
+```
+output_report/2_162279995_C_G_GRCh38.pdf
+```
+- Print-ready PDF document
+- Same content as HTML report
+- Suitable for archiving and sharing
+- Requires WeasyPrint (see Installation)
+
+### 3. Both HTML and PDF (Default)
+```bash
+python main.py --chrom 2 --pos 162279995 --ref C --alt G --output-format both
+```
+Generates both HTML and PDF reports in the output directory.
+
+### 4. Dictionary Format
 ```json
 {
   "variant_info": {
@@ -326,7 +369,7 @@ output_report/2_162279995_C_G_GRCh38.html
 - Can be saved to file: `python main.py ... --output-format dict > results.json`
 - Suitable for programmatic processing
 
-### 3. PDF Downloads (Optional)
+### 5. Literature PDF Downloads (Automatic)
 ```
 func_papers_pdf/
 ├── 12345678.pdf
@@ -334,8 +377,38 @@ func_papers_pdf/
 └── ...
 ```
 - Automatically downloaded from PubMed Central or publisher links
-- Useful for manual review
+- Used for full-text experiment extraction
 - Location customizable via `--pdf-path` argument
+
+### Manual PDF Download
+
+If PDFs cannot be automatically downloaded, the pipeline will prompt you with instructions:
+
+```
+================================================================================
+MANUAL PDF DOWNLOAD REQUIRED
+================================================================================
+
+The following 3 paper(s) could not be automatically downloaded:
+
+  1. PMID 12345678
+     PubMed: https://pubmed.ncbi.nlm.nih.gov/12345678/
+  ...
+
+INSTRUCTIONS:
+--------------------------------------------------------------------------------
+1. Visit PubMed links above and find the full-text PDF
+2. Download each PDF and save it to: /path/to/func_papers_pdf
+3. Name each file using its PMID: 12345678.pdf
+--------------------------------------------------------------------------------
+
+Options:
+  [c] Continue - I've added PDFs, re-check and continue with analysis
+  [s] Skip - Continue with abstract-only extraction for missing PDFs
+  [q] Quit - Exit the program
+```
+
+Use `--no-interactive` to skip this prompt and use abstract-only extraction automatically.
 
 ---
 
@@ -429,11 +502,13 @@ The pipeline follows this automated workflow:
 
 ## Supported LLM Providers
 
-| Provider | Models | Speed | Cost |
-|----------|--------|-------|------|
-| **OpenAI** | gpt-4o, gpt-4-turbo, gpt-4o-mini | Fast | Moderate |
-| **Anthropic** | claude-3-opus, claude-3-sonnet, claude-3-haiku | Moderate | Moderate |
-| **Google Gemini** | gemini-1.5-pro, gemini-1.5-flash | Fast | Low |
+| Provider | Models | PDF Support | Speed | Cost |
+|----------|--------|-------------|-------|------|
+| **OpenAI** | gpt-4o, gpt-4-turbo, gpt-4o-mini | ✓ File upload | Fast | Moderate |
+| **Anthropic** | claude-3-opus, claude-3-sonnet, claude-3-haiku | ✓ Base64 | Moderate | Moderate |
+| **Google Gemini** | gemini-1.5-pro, gemini-1.5-flash | ✓ File upload | Fast | Low |
+
+All providers now support full-text PDF extraction for better experiment identification.
 
 Recommended: **gpt-4o-mini** (fast and cost-effective)
 

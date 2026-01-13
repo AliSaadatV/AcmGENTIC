@@ -11,9 +11,16 @@ metapub>=0.4.2
 # LLM Provider Options (install one or more)
 # OpenAI (recommended default)
 langchain-openai>=0.0.1
+openai>=1.0.0
 
 # Anthropic Claude models
 langchain-anthropic>=0.1.0
+anthropic>=0.18.0
 
 # Google Gemini models
 langchain-google-genai>=0.0.1
+google-generativeai>=0.4.0
+
+# PDF Report Generation (optional - requires system dependencies)
+# See README.md for system library installation instructions
+weasyprint>=60.0

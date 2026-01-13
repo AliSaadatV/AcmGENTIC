@@ -1,8 +1,8 @@
 """
-HTML report generation for PS3/BS3 analysis results.
+HTML and PDF report generation for PS3/BS3 analysis results.
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pathlib import Path
 
 
@@ -45,7 +45,7 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: #f0fdfa;
             padding: 20px;
         }}
         .container {{
@@ -57,7 +57,7 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
             overflow: hidden;
         }}
         .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #0d9488;
             color: white;
             padding: 30px;
             text-align: center;
@@ -75,12 +75,12 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
         }}
         .section {{
             margin-bottom: 30px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #0d9488;
             padding-left: 20px;
         }}
         .section h2 {{
             font-size: 1.8em;
-            color: #667eea;
+            color: #0d9488;
             margin-bottom: 15px;
         }}
         .info-grid {{
@@ -90,14 +90,14 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
             margin-bottom: 20px;
         }}
         .info-card {{
-            background: #f8f9fa;
+            background: #f0fdfa;
             padding: 15px;
             border-radius: 5px;
-            border: 1px solid #e9ecef;
+            border: 1px solid #99f6e4;
         }}
         .info-card .label {{
             font-weight: bold;
-            color: #667eea;
+            color: #0d9488;
             font-size: 0.9em;
             text-transform: uppercase;
         }}
@@ -107,8 +107,8 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
             word-break: break-word;
         }}
         .assessment-box {{
-            background: #f0f4ff;
-            border: 2px solid #667eea;
+            background: #f0fdfa;
+            border: 2px solid #0d9488;
             border-radius: 8px;
             padding: 20px;
             margin: 20px 0;
@@ -138,19 +138,19 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
             margin: 20px 0;
         }}
         th {{
-            background: #f0f4ff;
-            color: #667eea;
+            background: #f0fdfa;
+            color: #0d9488;
             padding: 12px;
             text-align: left;
             font-weight: 600;
-            border-bottom: 2px solid #667eea;
+            border-bottom: 2px solid #0d9488;
         }}
         td {{
             padding: 12px;
             border-bottom: 1px solid #e9ecef;
         }}
         tr:hover {{
-            background: #f8f9fa;
+            background: #f0fdfa;
         }}
         .badge {{
             display: inline-block;
@@ -161,12 +161,12 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
             margin-right: 5px;
         }}
         .badge-paper {{
-            background: #e3f2fd;
-            color: #1565c0;
+            background: #ccfbf1;
+            color: #0d9488;
         }}
         .badge-experiment {{
-            background: #f3e5f5;
-            color: #6a1b9a;
+            background: #d1fae5;
+            color: #047857;
         }}
         .badge-supporting {{
             background: #c8e6c9;
@@ -176,22 +176,30 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
             background: #ffe0b2;
             color: #e65100;
         }}
+        .badge-pathogenic {{
+            background: #ffcdd2;
+            color: #c62828;
+        }}
+        .badge-benign {{
+            background: #fff9c4;
+            color: #f57f17;
+        }}
         .experiment-item {{
             background: #fafafa;
             padding: 15px;
             margin: 15px 0;
             border-radius: 5px;
-            border-left: 4px solid #764ba2;
+            border-left: 4px solid #14b8a6;
         }}
         .experiment-item .key {{
             font-weight: 600;
-            color: #764ba2;
+            color: #0f766e;
         }}
         .footer {{
-            background: #f8f9fa;
+            background: #f0fdfa;
             padding: 20px;
             text-align: center;
-            border-top: 1px solid #e9ecef;
+            border-top: 1px solid #99f6e4;
             color: #666;
             font-size: 0.9em;
         }}
@@ -204,7 +212,7 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
         .stat-box {{
             flex: 1;
             min-width: 150px;
-            background: #f8f9fa;
+            background: #f0fdfa;
             padding: 20px;
             border-radius: 5px;
             text-align: center;
@@ -212,12 +220,21 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
         .stat-number {{
             font-size: 2em;
             font-weight: bold;
-            color: #667eea;
+            color: #0d9488;
         }}
         .stat-label {{
             color: #666;
             font-size: 0.9em;
             margin-top: 5px;
+        }}
+        @media print {{
+            body {{
+                background: white;
+                padding: 0;
+            }}
+            .container {{
+                box-shadow: none;
+            }}
         }}
     </style>
 </head>
@@ -225,7 +242,7 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
     <div class="container">
         <div class="header">
             <h1>PS3/BS3 Functional Evidence Analysis</h1>
-            <p>ACMG Variant Classification Report</p>
+            <p>ACMG/AMP Variant Classification Report (PS3/BS3 criteria) </p>
         </div>
 
         <div class="content">
@@ -265,18 +282,17 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
                         <div class="stat-label">Experiments</div>
                     </div>
                 </div>
-                {_generate_papers_table(functional_papers) if functional_papers else '<p>No functional papers identified.</p>'}
             </div>
 
             <!-- Experiments Section -->
             <div class="section">
                 <h2>3. Functional Experiments</h2>
-                {_generate_experiments_html(experiments) if experiments else '<p>No experiments extracted.</p>'}
+                {_generate_experiments_html(experiments, functional_papers) if experiments else '<p>No experiments extracted.</p>'}
             </div>
 
             <!-- Assessment Section -->
             <div class="section">
-                <h2>4. ACMG Assessment</h2>
+                <h2>4. ACMG/AMP Assessment</h2>
                 <div class="assessment-box">
                     <div class="assessment-decision">
                         Decision: 
@@ -285,6 +301,7 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
                         </span>
                     </div>
                     {f'<div class="stat-label">Strength: {assessment.get("strength", "N/A").upper()}</div>' if assessment.get('strength') else ''}
+                    {f'<div class="stat-label">Confidence: {assessment.get("confidence", "N/A")}</div>' if assessment.get('confidence') else ''}
                     <div class="narrative">
                         {assessment['narrative']}
                     </div>
@@ -295,7 +312,7 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
 
         <div class="footer">
             <p>Report generated by PS3/BS3 Analysis Pipeline</p>
-            <p>For more information, visit: <a href="https://github.com/AliSaadatV/AcmGENTIC" style="color: #667eea;">AcmGENTIC on GitHub</a></p>
+            <p>For more information, visit: <a href="https://github.com/AliSaadatV/AcmGENTIC" style="color: #0d9488;">AcmGENTIC on GitHub</a></p>
         </div>
     </div>
 </body>
@@ -307,56 +324,193 @@ def generate_html_report(result: Dict[str, Any], output_path: str) -> None:
     output_file.write_text(html_content)
 
 
-def _generate_papers_table(functional_papers: list) -> str:
-    """Generate HTML table of functional papers."""
-    if not functional_papers:
-        return "<p>No functional papers identified.</p>"
-
-    rows = ""
-    for paper in functional_papers:
-        rows += f"""
-        <tr>
-            <td><span class="badge badge-paper">{paper['pmid']}</span></td>
-            <td>{paper['title'][:80]}...</td>
-            <td>{paper['justification'][:60]}...</td>
-        </tr>
-        """
-
-    return f"""
-    <table>
-        <thead>
-            <tr>
-                <th>PMID</th>
-                <th>Title</th>
-                <th>Justification</th>
-            </tr>
-        </thead>
-        <tbody>
-            {rows}
-        </tbody>
-    </table>
-    """
-
-
-def _generate_experiments_html(experiments: list) -> str:
-    """Generate HTML for experiments."""
+def _generate_experiments_html(experiments: list, functional_papers: list) -> str:
+    """Generate HTML for experiments with paper title and justification."""
     if not experiments:
         return "<p>No experiments extracted.</p>"
 
+    # Create lookup dictionary for paper info by PMID
+    paper_lookup = {
+        p['pmid']: {'title': p.get('title') or 'N/A', 'justification': p.get('justification') or 'N/A'}
+        for p in functional_papers
+    } if functional_papers else {}
+
     html = ""
     for i, exp in enumerate(experiments, 1):
-        evaluation_class = "badge-supporting" if exp['evaluation'] == "supports_pathogenic" else "badge-ambiguous"
+        # Determine evaluation class for badge styling
+        eval_value = exp.get('evaluation', 'ambiguous')
+        if eval_value == "supports_pathogenic":
+            evaluation_class = "badge-pathogenic"
+        elif eval_value == "supports_benign":
+            evaluation_class = "badge-benign"
+        else:
+            evaluation_class = "badge-ambiguous"
+        
+        # Get paper info from lookup
+        pmid = exp['pmid']
+        paper_info = paper_lookup.get(pmid, {'title': 'N/A', 'justification': 'N/A'})
+        title = paper_info['title']
+        justification = paper_info['justification']
+        
+        # Get values with fallbacks for empty strings
+        assay_type = exp.get('assay_type') or "N/A"
+        system = exp.get('system') or "N/A"
+        readout = exp.get('readout') or "N/A"
+        effect_direction = exp.get('effect_direction') or "N/A"
+        magnitude_stats = exp.get('magnitude_stats') or "N/A"
+        controls_validity = exp.get('controls_validity') or "N/A"
+        authors_conclusion = exp.get('authors_conclusion') or "N/A"
+        
         html += f"""
-        <div class="experiment-item">
-            <div><span class="key">Experiment {i} (PMID {exp['pmid']})</span> <span class="badge {evaluation_class}">{exp['evaluation']}</span></div>
-            <p><span class="key">Assay Type:</span> {exp['assay_type']}</p>
-            <p><span class="key">System:</span> {exp['system']}</p>
-            <p><span class="key">Readout:</span> {exp['readout']}</p>
-            <p><span class="key">Effect Direction:</span> {exp['effect_direction']}</p>
-            <p><span class="key">Magnitude & Stats:</span> {exp['magnitude_stats']}</p>
-            <p><span class="key">Controls & Quality:</span> {exp['controls_validity']}</p>
-            <p><span class="key">Authors' Conclusion:</span> {exp['authors_conclusion']}</p>
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment {i} (Title: {title} PMID: {pmid})</span> <span class="badge {evaluation_class}">{eval_value}</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> {justification}</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> {assay_type}</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> {system}</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> {readout}</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> {effect_direction}</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> {magnitude_stats}</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> {controls_validity}</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> {authors_conclusion}</p>
         </div>
         """
 
     return html
+
+
+def generate_pdf_report(result: Dict[str, Any], output_path: str) -> None:
+    """
+    Generate a PDF report from analysis results using WeasyPrint.
+
+    Parameters
+    ----------
+    result : dict
+        Dictionary containing analysis results with keys:
+        - variant_info
+        - candidate_papers
+        - functional_papers
+        - experiments
+        - assessment
+    output_path : str
+        Path where the PDF file will be saved
+        
+    Raises
+    ------
+    ImportError
+        If WeasyPrint is not installed
+    """
+    try:
+        from weasyprint import HTML, CSS
+    except ImportError:
+        raise ImportError(
+            "WeasyPrint is required for PDF generation. "
+            "Install it with: pip install weasyprint\n"
+            "Note: WeasyPrint requires system libraries (cairo, pango). "
+            "See https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation"
+        )
+    
+    # First generate HTML content (reuse existing function)
+    import tempfile
+    import os
+    
+    # Create a temporary HTML file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as tmp:
+        # Generate HTML to temp file
+        generate_html_report(result, tmp.name)
+        tmp_path = tmp.name
+    
+    try:
+        # Read the HTML content
+        with open(tmp_path, 'r') as f:
+            html_content = f.read()
+        
+        # Add PDF-specific styles
+        pdf_css = CSS(string="""
+            @page {
+                size: A4;
+                margin: 1.5cm;
+            }
+            body {
+                background: white !important;
+                padding: 0 !important;
+            }
+            .container {
+                box-shadow: none !important;
+            }
+            .header {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            table {
+                page-break-inside: avoid;
+            }
+            .experiment-item {
+                page-break-inside: avoid;
+            }
+            .section {
+                page-break-inside: avoid;
+            }
+        """)
+        
+        # Generate PDF
+        html = HTML(string=html_content)
+        output_file = Path(output_path)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        html.write_pdf(str(output_file), stylesheets=[pdf_css])
+        
+    finally:
+        # Clean up temp file
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def generate_reports(
+    result: Dict[str, Any],
+    output_dir: str,
+    variant_label: str,
+    formats: str = "both",
+) -> Dict[str, str]:
+    """
+    Generate reports in specified formats.
+
+    Parameters
+    ----------
+    result : dict
+        Dictionary containing analysis results
+    output_dir : str
+        Directory where reports will be saved
+    variant_label : str
+        Label for the variant (used in filename)
+    formats : str
+        Output format(s): 'html', 'pdf', or 'both'
+        
+    Returns
+    -------
+    dict
+        Mapping of format to output path for generated reports
+    """
+    output_paths = {}
+    output_dir_path = Path(output_dir)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+    
+    # Sanitize variant label for filename
+    safe_label = variant_label.replace(":", "_").replace(">", "_").replace(" ", "_")
+    
+    if formats in ("html", "both"):
+        html_path = output_dir_path / f"{safe_label}.html"
+        generate_html_report(result, str(html_path))
+        output_paths["html"] = str(html_path)
+        print(f"   ✓ HTML report saved to: {html_path}")
+    
+    if formats in ("pdf", "both"):
+        pdf_path = output_dir_path / f"{safe_label}.pdf"
+        try:
+            generate_pdf_report(result, str(pdf_path))
+            output_paths["pdf"] = str(pdf_path)
+            print(f"   ✓ PDF report saved to: {pdf_path}")
+        except ImportError as e:
+            print(f"   ⚠ PDF generation skipped: {e}")
+        except Exception as e:
+            print(f"   ⚠ PDF generation failed: {e}")
+    
+    return output_paths

@@ -47,11 +47,13 @@ from src.litvar2 import (
     build_candidate_list,
     download_pdfs_for_papers,
     fetch_pdf_url,
+    get_failed_pdf_pmids,
+    prompt_manual_pdf_download,
 )
 from src.filtering import llm_filter_functional_papers, llm_extract_experiments
 from src.assessment import integrate_evidence
 from src.reporting import print_report
-from src.html_report import generate_html_report
+from src.html_report import generate_html_report, generate_pdf_report, generate_reports
 
 
 def analyze_variant(
@@ -63,6 +65,7 @@ def analyze_variant(
     pdf_path: Optional[str] = None,
     download_pdfs: bool = True,
     max_pdf_downloads: Optional[int] = None,
+    interactive: bool = True,
 ) -> Dict[str, Any]:
     """
     Run the full PS3/BS3 functional evidence pipeline for a single variant,
@@ -86,6 +89,8 @@ def analyze_variant(
         Whether to attempt downloading PDFs for functional papers (default: True)
     max_pdf_downloads : int, optional
         Maximum number of PDFs to download. If None, download all available.
+    interactive : bool, optional
+        If True, prompt user to manually download missing PDFs (default: True)
 
     Returns
     -------
@@ -146,6 +151,22 @@ def analyze_variant(
         )
         print(f"   Downloaded/found {len(downloaded_pdfs)} PDFs")
         
+        # Check for missing PDFs and prompt for manual download
+        failed_pmids = get_failed_pdf_pmids(functional_pmids, pdf_path)
+        if failed_pmids:
+            print(f"   {len(failed_pmids)} PDF(s) could not be automatically downloaded")
+            
+            # Prompt user for manual download (if interactive)
+            manually_added = prompt_manual_pdf_download(
+                failed_pmids,
+                pdf_path,
+                interactive=interactive,
+            )
+            downloaded_pdfs.update(manually_added)
+            
+            if manually_added:
+                print(f"   Total PDFs available: {len(downloaded_pdfs)}")
+        
         # Update functional papers with PDF paths
         for fp in functional_papers:
             if fp.pmid in downloaded_pdfs:
@@ -160,9 +181,9 @@ def analyze_variant(
     )
     print(f"   Extracted {len(experiments)} experiments")
 
-    # 6. Integrate evidence
+    # 6. Integrate evidence using LLM
     print("\nStep 6: Integrating evidence and making PS3/BS3 call...")
-    assessment = integrate_evidence(experiments)
+    assessment = integrate_evidence(experiments, variant_label)
 
     # 7. Output report
     print_report(vi, candidate_papers, functional_papers, experiments, assessment)
@@ -269,15 +290,21 @@ Examples:
     parser.add_argument(
         "--output-format",
         type=str,
-        choices=["html", "dict"],
-        default="html",
-        help="Output format: 'html' for HTML report or 'dict' for dictionary (default: html)"
+        choices=["html", "pdf", "both", "dict"],
+        default="both",
+        help="Output format: 'html', 'pdf', 'both' (HTML+PDF), or 'dict' for dictionary (default: both)"
     )
     parser.add_argument(
         "--output-dir",
         type=str,
         default="output_report",
         help="Directory to save HTML reports (default: output_report)"
+    )
+    parser.add_argument(
+        "--no-interactive",
+        action="store_true",
+        default=False,
+        help="Disable interactive prompts (e.g., manual PDF download)"
     )
 
     args = parser.parse_args()
@@ -304,6 +331,7 @@ Examples:
         pdf_path=str(pdf_dir),
         download_pdfs=args.download_pdfs,
         max_pdf_downloads=args.max_pdf_downloads,
+        interactive=not args.no_interactive,
     )
 
     # Handle output
@@ -315,19 +343,26 @@ Examples:
         import json
         print(json.dumps(result, indent=2, default=str))
     else:
-        # Generate HTML report
-        print("\nGenerating HTML report...")
-        html_filename = f"{args.chrom}_{args.pos}_{args.ref}_{args.alt}_{args.assembly}.html"
-        html_path = output_dir / html_filename
+        # Generate report(s)
+        print("\nGenerating report(s)...")
+        variant_label = f"{args.chrom}_{args.pos}_{args.ref}_{args.alt}_{args.assembly}"
 
         try:
-            generate_html_report(result, str(html_path))
-            print(f"✓ HTML report saved to: {html_path}")
+            output_paths = generate_reports(
+                result,
+                str(output_dir),
+                variant_label,
+                formats=args.output_format,
+            )
+            
+            if not output_paths:
+                raise RuntimeError("No reports were generated")
+                
         except Exception as e:
-            print(f"Warning: Failed to generate HTML report: {e}")
-            print("Saving results as dictionary instead...")
+            print(f"Warning: Failed to generate report(s): {e}")
+            print("Saving results as JSON instead...")
             import json
-            json_path = output_dir / f"{args.chrom}_{args.pos}_{args.ref}_{args.alt}_{args.assembly}.json"
+            json_path = output_dir / f"{variant_label}.json"
             with open(json_path, "w") as f:
                 json.dump(result, f, indent=2, default=str)
             print(f"✓ Results saved to: {json_path}")

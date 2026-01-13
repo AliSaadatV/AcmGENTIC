@@ -79,11 +79,20 @@ class FunctionalExperiment:
 
 @dataclass
 class IntegratedAssessment:
-    """Store integrated PS3/BS3 assessment result."""
+    """Store integrated PS3/BS3 assessment result.
+    
+    Attributes:
+        decision: One of "PS3", "BS3", or "none"
+        narrative: Summary explanation of the evidence and decision
+        strength: Evidence strength - "very_strong", "strong", "moderate", "supporting", or None
+        key_pmids: List of PMIDs contributing to the assessment
+        confidence: Confidence in the assessment - "high", "medium", "low", or None
+    """
     decision: str
     narrative: str
     strength: Optional[str] = None
     key_pmids: Optional[List[str]] = None
+    confidence: Optional[str] = None
 
 
 def build_variant_label(vi: VariantInfo) -> str:

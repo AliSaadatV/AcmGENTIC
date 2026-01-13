@@ -99,6 +99,8 @@ def print_report(
 
     if assessment.strength:
         print(f"\n   Strength: {assessment.strength.upper()}")
+    if assessment.confidence:
+        print(f"   Confidence: {assessment.confidence}")
     if assessment.key_pmids:
         print(f"   Key PMIDs: {', '.join(assessment.key_pmids)}")
 

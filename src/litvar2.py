@@ -7,6 +7,7 @@ Includes PDF URL discovery and download capabilities using:
 """
 
 import os
+import sys
 import time
 import requests
 import urllib.request
@@ -83,17 +84,25 @@ def query_litvar2_publications(variant_id: str) -> Set[str]:
 
 def query_litvar2(vi: VariantInfo) -> Set[str]:
     """
-    Query LitVar2 using multiple variant identifiers.
+    Query LitVar2 using rsid only.
     Returns a set of all unique PMIDs found.
+    
+    Raises SystemExit if rsid is not available.
     """
-    all_pmids: Set[str] = set()
-
-    for variant_id in vi.search_strings():
-        pmids = query_litvar2_publications(variant_id)
-        all_pmids.update(pmids)
-        time.sleep(0.5)  # Be respectful to the API
-
-    return all_pmids
+    # Validate rsid exists
+    rsid = vi.rsid
+    if not rsid or rsid.lower() in ('none', 'na', 'null', 'n/a', ''):
+        print("\n" + "="*80)
+        print("ERROR: LitVar2 requires an rsID to query publications.")
+        print("="*80)
+        print("\nWe apologize, but LitVar2 only works with rsID identifiers.")
+        print("The variant does not have a valid rsID available.")
+        print("Please provide a variant with a known rsID or use an alternative method.")
+        print("\n" + "="*80)
+        sys.exit(1)
+    
+    pmids = query_litvar2_publications(rsid)
+    return pmids
 
 
 def entrez_get(endpoint: str, params: Dict) -> requests.Response:
@@ -338,3 +347,141 @@ def download_pdfs_for_papers(
         time.sleep(0.5)
     
     return downloaded
+
+
+def get_failed_pdf_pmids(
+    pmids: List[str],
+    pdf_dir: str,
+) -> List[str]:
+    """
+    Get list of PMIDs that don't have PDFs in the directory.
+    
+    Parameters
+    ----------
+    pmids : list of str
+        List of PubMed IDs to check
+    pdf_dir : str
+        Directory where PDFs should be stored
+        
+    Returns
+    -------
+    list of str
+        PMIDs without PDF files
+    """
+    failed = []
+    pdf_path = Path(pdf_dir)
+    
+    for pmid in pmids:
+        if not (pdf_path / f"{pmid}.pdf").exists():
+            failed.append(pmid)
+    
+    return failed
+
+
+def prompt_manual_pdf_download(
+    failed_pmids: List[str],
+    pdf_dir: str,
+    interactive: bool = True,
+) -> Dict[str, str]:
+    """
+    Prompt user to manually download PDFs that couldn't be automatically downloaded.
+    
+    Parameters
+    ----------
+    failed_pmids : list of str
+        List of PMIDs that failed to download
+    pdf_dir : str
+        Directory where PDFs should be saved
+    interactive : bool
+        If True, wait for user input; if False, just print instructions
+        
+    Returns
+    -------
+    dict
+        Mapping from PMID to PDF path for any newly found PDFs
+    """
+    if not failed_pmids:
+        return {}
+    
+    print("\n" + "="*80)
+    print("MANUAL PDF DOWNLOAD REQUIRED")
+    print("="*80)
+    print(f"\nThe following {len(failed_pmids)} paper(s) could not be automatically downloaded:")
+    print()
+    
+    for i, pmid in enumerate(failed_pmids, 1):
+        pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
+        print(f"  {i}. PMID {pmid}")
+        print(f"     PubMed: {pubmed_url}")
+    
+    print("\n" + "-"*80)
+    print("INSTRUCTIONS:")
+    print("-"*80)
+    print(f"""
+1. Visit PubMed links above and find the full-text PDF
+   (Look for "Free PMC article", "Full text links", or publisher website)
+
+2. Download each PDF and save it to:
+   {Path(pdf_dir).absolute()}
+
+3. Name each file using its PMID:
+   Example: {failed_pmids[0]}.pdf
+
+4. File naming format: <PMID>.pdf
+   (e.g., 12345678.pdf)
+""")
+    print("-"*80)
+    
+    if not interactive:
+        return {}
+    
+    while True:
+        print("\nOptions:")
+        print("  [c] Continue - I've added PDFs, re-check and continue with analysis")
+        print("  [s] Skip - Continue with abstract-only extraction for missing PDFs")
+        print("  [q] Quit - Exit the program")
+        
+        try:
+            choice = input("\nYour choice [c/s/q]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nSkipping manual PDF download...")
+            choice = "s"
+        
+        if choice == "c":
+            # Re-check for PDFs
+            newly_found = {}
+            pdf_path = Path(pdf_dir)
+            
+            for pmid in failed_pmids:
+                pdf_file = pdf_path / f"{pmid}.pdf"
+                if pdf_file.exists():
+                    newly_found[pmid] = str(pdf_file)
+                    print(f"   [✓] Found: {pmid}.pdf")
+            
+            if newly_found:
+                print(f"\n   Found {len(newly_found)} new PDF(s)!")
+            
+            still_missing = [p for p in failed_pmids if p not in newly_found]
+            if still_missing:
+                print(f"\n   Still missing {len(still_missing)} PDF(s):")
+                for pmid in still_missing:
+                    print(f"     - {pmid}.pdf")
+                
+                # Ask again
+                continue_anyway = input("\n   Continue with abstract-only for missing PDFs? [y/n]: ").strip().lower()
+                if continue_anyway != "y":
+                    continue
+            
+            return newly_found
+        
+        elif choice == "s":
+            print("\n   Continuing with abstract-only extraction for missing PDFs...")
+            return {}
+        
+        elif choice == "q":
+            print("\n   Exiting...")
+            import sys
+            sys.exit(0)
+        
+        else:
+            print("   Invalid choice. Please enter 'c', 's', or 'q'.")
