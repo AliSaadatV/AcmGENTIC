@@ -46,8 +46,6 @@ Thumbs.db
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# PDFs (from paper downloads)
-*.pdf
 
 # Temporary files
 *.tmp
