@@ -21,6 +21,7 @@ python main.py --chrom 2 --pos 162279995 --ref C --alt G
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
+- [Agentic Extraction](#agentic-extraction)
 - [Project Structure](#project-structure)
 - [ACMG Criteria](#acmg-criteria)
 - [API Documentation](#api-documentation)
@@ -72,6 +73,32 @@ See [WeasyPrint Windows installation](https://doc.courtbouillon.org/weasyprint/s
 
 **Note:** PDF generation is optional. The pipeline will still generate HTML reports if WeasyPrint is not installed.
 
+### Agentic Extraction Dependencies (Optional)
+
+For advanced agentic document extraction with OCR and visual analysis:
+
+**System Dependencies (pdf2image requires poppler):**
+```bash
+# macOS
+brew install poppler
+
+# Ubuntu/Debian
+sudo apt-get install poppler-utils
+
+# Windows
+# Download from https://github.com/oschwartz10612/poppler-windows/releases
+```
+
+**Python Dependencies:**
+```bash
+# Core agentic dependencies
+pip install pdf2image Pillow opencv-python transformers torch layoutreader
+
+# OCR - choose one:
+pip install easyocr          # Recommended for macOS (more stable)
+pip install paddleocr paddlepaddle  # Alternative (may have issues on macOS)
+```
+
 ---
 
 ## Configuration
@@ -88,7 +115,7 @@ cp .env.example .env
 ```env
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-your-api-key-here
-LLM_MODEL=gpt-4o-mini (or other models)
+LLM_MODEL=gpt-4o-mini
 ```
 Get key from: https://platform.openai.com/api-keys
 
@@ -96,7 +123,7 @@ Get key from: https://platform.openai.com/api-keys
 ```env
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-your-api-key-here
-LLM_MODEL=claude-3-5-sonnet-20241022 (or other models)
+LLM_MODEL=claude-3-5-sonnet-20241022
 ```
 Get key from: https://console.anthropic.com/
 
@@ -104,7 +131,7 @@ Get key from: https://console.anthropic.com/
 ```env
 LLM_PROVIDER=gemini
 GOOGLE_API_KEY=your-google-api-key
-LLM_MODEL=gemini-1.5-flash (or other models)
+LLM_MODEL=gemini-1.5-flash
 ```
 Get key from: https://makersuite.google.com/app/apikey
 
@@ -119,6 +146,12 @@ NCBI_API_KEY=your-ncbi-api-key    # Optional, improves rate limits
 
 ```env
 LLM_TEMPERATURE=0                  # 0 = deterministic, 1 = random
+
+# Agentic extraction settings
+USE_AGENTIC_EXTRACTION=false       # Enable agentic extraction by default
+AGENTIC_VLM_MODEL=gpt-4o-mini      # Vision model for table/chart analysis
+                                   # Use gpt-4o for better accuracy
+USE_PADDLEOCR=false                # Force PaddleOCR instead of EasyOCR on macOS
 ```
 
 ---
@@ -127,7 +160,7 @@ LLM_TEMPERATURE=0                  # 0 = deterministic, 1 = random
 
 ### Command Line Interface
 
-#### Basic Analysis (Default: HTML Report)
+#### Basic Analysis (Default: HTML + PDF Report)
 ```bash
 python main.py --chrom 2 --pos 162279995 --ref C --alt G
 ```
@@ -150,6 +183,7 @@ python main.py --chrom 2 --pos 162279995 --ref C --alt G
 --no-interactive                    Disable interactive prompts (e.g., manual PDF download)
 --no-download-pdfs                  Skip PDF download, use abstract-only extraction
 --max-pdf-downloads N               Maximum number of PDFs to download
+--agentic                           Enable agentic document extraction (OCR + VLM)
 ```
 
 #### CLI Examples
@@ -171,6 +205,16 @@ python main.py --chrom 2 --pos 162279995 --ref C --alt G \
                --output-format dict > results.json
 ```
 
+**Agentic Extraction (advanced PDF analysis)**
+```bash
+python main.py --chrom 2 --pos 162279995 --ref C --alt G --agentic
+```
+
+**Non-interactive Mode (for automation)**
+```bash
+python main.py --chrom 2 --pos 162279995 --ref C --alt G --no-interactive
+```
+
 **Custom Directories**
 ```bash
 python main.py --chrom 2 --pos 162279995 --ref C --alt G \
@@ -186,7 +230,8 @@ python main.py \
   --model gpt-4o-mini \
   --pdf-path papers \
   --output-format html \
-  --output-dir analysis_results
+  --output-dir analysis_results \
+  --agentic
 ```
 
 **Get Help**
@@ -206,20 +251,23 @@ result = analyze_variant(
     ref="C",
     alt="G",
     assembly="GRCh38",
-    pdf_path="papers"
+    pdf_path="papers",
+    download_pdfs=True,
+    interactive=False,  # Disable manual PDF prompts
 )
 
 # Access results
 decision = result["assessment"]["decision"]      # "PS3", "BS3", or "none"
-strength = result["assessment"]["strength"]      # "strong" or "supporting"
+strength = result["assessment"]["strength"]      # "very_strong", "strong", "moderate", "supporting"
+confidence = result["assessment"]["confidence"]  # "high", "medium", "low"
 narrative = result["assessment"]["narrative"]    # Detailed explanation
 
-print(f"Decision: {decision}")
+print(f"Decision: {decision} ({strength})")
 print(f"Narrative: {narrative}")
 
 # Process experiments
 for exp in result["experiments"]:
-    print(f"PMID {exp['pmid']}: {exp['assay_type']}")
+    print(f"PMID {exp['pmid']}: {exp['assay_type']} - {exp['evaluation']}")
 ```
 
 ### Batch Analysis
@@ -236,7 +284,7 @@ variants = [
 results = {}
 for variant in variants:
     key = f"{variant['chrom']}:{variant['pos']}"
-    results[key] = analyze_variant(**variant)
+    results[key] = analyze_variant(**variant, interactive=False)
 
 # Save results
 with open("batch_results.json", "w") as f:
@@ -245,10 +293,50 @@ with open("batch_results.json", "w") as f:
 
 ---
 
+## Agentic Extraction
+
+The `--agentic` flag enables advanced document extraction using:
+
+- **OCR**: EasyOCR (recommended for macOS) or PaddleOCR for text extraction
+- **Layout Detection**: Identifies text, tables, charts, and figures
+- **LayoutReader**: LayoutLMv3-based reading order detection
+- **VLM Tools**: Vision-language models (GPT-4o) for analyzing tables and charts
+- **LangChain Agents**: Orchestrates extraction across document pages
+
+### When to Use Agentic Extraction
+
+- Papers with complex tables containing experimental data
+- Documents with charts/figures showing functional results
+- When standard PDF text extraction misses important information
+- Multi-column layouts that confuse standard extractors
+
+### Configuration
+
+```env
+# In .env file
+USE_AGENTIC_EXTRACTION=true        # Enable by default
+AGENTIC_VLM_MODEL=gpt-4o           # Better vision model (recommended)
+USE_PADDLEOCR=false                # Use EasyOCR on macOS
+```
+
+Or via command line:
+```bash
+python main.py --chrom 2 --pos 162279995 --ref C --alt G --agentic
+```
+
+### Performance Notes
+
+- Agentic extraction is slower than standard extraction
+- Requires more API calls (vision model for each table/chart)
+- Produces more accurate results for complex documents
+- First run downloads OCR and layout models (~2GB)
+
+---
+
 ## Project Structure
 
 ```
-LLM_PS3_BS3/
+LLM_PS3_BS3_pipeline/
 ├── main.py                  # CLI entry point
 ├── examples.py              # Python usage examples
 ├── requirements.txt         # Dependencies
@@ -264,7 +352,8 @@ LLM_PS3_BS3/
 │   ├── utils.py             # Data classes and utilities
 │   ├── vep.py               # VEP annotation
 │   ├── litvar2.py           # LitVar2 and PubMed retrieval
-│   ├── filtering.py         # LLM-based filtering (supports PDF extraction for all providers)
+│   ├── filtering.py         # LLM-based filtering and PDF extraction
+│   ├── agentic_extraction.py # Agentic document extraction (OCR + VLM)
 │   ├── assessment.py        # PS3/BS3 decision logic
 │   ├── html_report.py       # HTML and PDF report generation
 │   ├── reporting.py         # Console reporting
@@ -274,6 +363,9 @@ LLM_PS3_BS3/
 ├── func_papers_pdf/         # Downloaded literature PDFs
 │
 └── notebooks/               # Jupyter notebooks (optional)
+    ├── 01_preprocess_clingen.ipynb
+    ├── 02_abstract_class_bench.ipynb
+    └── 03_full_text_class_bench.ipynb
 ```
 
 ### Module Descriptions
@@ -283,12 +375,13 @@ LLM_PS3_BS3/
 | **main.py** | CLI entry point with argument parsing |
 | **src/config.py** | Environment variable configuration and validation |
 | **src/llm.py** | Multi-provider LLM initialization (OpenAI, Anthropic, Gemini) |
-| **src/utils.py** | Data classes: VariantInfo, CandidatePaper, FunctionalPaper, etc. |
+| **src/utils.py** | Data classes: VariantInfo, CandidatePaper, FunctionalPaper, FunctionalExperiment, IntegratedAssessment |
 | **src/vep.py** | Ensembl VEP REST API integration for variant annotation |
-| **src/litvar2.py** | LitVar2 and PubMed literature retrieval + manual PDF workflow |
-| **src/filtering.py** | LLM-based paper filtering and PDF experiment extraction (all providers) |
+| **src/litvar2.py** | LitVar2 and PubMed literature retrieval + PDF download workflow |
+| **src/filtering.py** | LLM-based paper filtering and PDF experiment extraction |
+| **src/agentic_extraction.py** | Advanced agentic extraction with OCR, layout detection, and VLM tools |
 | **src/assessment.py** | Evidence integration and PS3/BS3 decision logic |
-| **src/html_report.py** | HTML and PDF report generation (teal/green theme) |
+| **src/html_report.py** | HTML and PDF report generation |
 | **src/reporting.py** | Console report formatting and output |
 
 ---
@@ -313,6 +406,14 @@ Well-established in vitro or in vivo functional studies show no damaging effect 
 - Normal splicing
 - Maintained protein-protein interactions
 
+### Evidence Strength Levels
+
+The pipeline assigns strength levels based on evidence quality:
+- **very_strong**: Multiple independent, well-controlled studies with consistent results
+- **strong**: Well-established functional studies with clear results
+- **moderate**: Good evidence but with some limitations
+- **supporting**: Some functional evidence but insufficient for higher strength
+
 ---
 
 ## Output Formats
@@ -322,7 +423,7 @@ Well-established in vitro or in vivo functional studies show no damaging effect 
 output_report/chr_pos_ref_alt_version.html
 ```
 
-example output: 2_162279995_C_G_GRCh38.html
+Example output: `2_162279995_C_G_GRCh38.html`
 
 - Professional, interactive web page
 - Contains all analysis results
@@ -332,10 +433,10 @@ example output: 2_162279995_C_G_GRCh38.html
 
 ### 2. PDF Report
 ```
-output_report/chr_pos_ref_alt_version.html
+output_report/chr_pos_ref_alt_version.pdf
 ```
 
-example output: report/2_162279995_C_G_GRCh38.pdf
+Example output: `2_162279995_C_G_GRCh38.pdf`
 
 - Print-ready PDF document
 - Same content as HTML report
@@ -367,8 +468,11 @@ Generates both HTML and PDF reports in the output directory.
   "assessment": {
     "decision": "PS3",
     "strength": "strong",
-    "narrative": "..."
-  }
+    "confidence": "high",
+    "narrative": "...",
+    "key_pmids": ["12345678", "23456789"]
+  },
+  "downloaded_pdfs": {...}
 }
 ```
 - Printed to stdout as JSON
@@ -430,6 +534,9 @@ def analyze_variant(
     alt: str,
     assembly: str = "GRCh38",
     pdf_path: Optional[str] = None,
+    download_pdfs: bool = True,
+    max_pdf_downloads: Optional[int] = None,
+    interactive: bool = True,
 ) -> Dict[str, Any]:
 ```
 
@@ -440,13 +547,16 @@ def analyze_variant(
 - `alt` (str): Alternate allele
 - `assembly` (str): Genome assembly version (default: "GRCh38")
 - `pdf_path` (str, optional): Directory to save functional paper PDFs
+- `download_pdfs` (bool): Whether to download PDFs (default: True)
+- `max_pdf_downloads` (int, optional): Maximum PDFs to download
+- `interactive` (bool): Enable interactive prompts (default: True)
 
 **Returns:**
-- Dictionary with keys: `variant_info`, `candidate_papers`, `functional_papers`, `experiments`, `assessment`
+- Dictionary with keys: `variant_info`, `candidate_papers`, `functional_papers`, `experiments`, `assessment`, `downloaded_pdfs`
 
 **Example:**
 ```python
-result = analyze_variant("2", 162279995, "C", "G")
+result = analyze_variant("2", 162279995, "C", "G", interactive=False)
 print(result["assessment"]["decision"])
 ```
 
@@ -454,14 +564,16 @@ print(result["assessment"]["decision"])
 
 ## Examples
 
-See `examples.py` for 6 complete Python examples:
+See `examples.py` for complete Python examples:
 
 1. Simple variant analysis
 2. Using different LLM model (Claude)
 3. Batch analysis of multiple variants
 4. Custom HTML report generation
-5. Extracting specific data
+5. Extracting specific data from results
 6. Analyzing with different genome assemblies
+7. Agentic extraction mode
+8. Non-interactive batch processing
 
 Run examples:
 ```bash
@@ -491,17 +603,22 @@ The pipeline follows this automated workflow:
    ↓
    Use LLM to identify papers with functional experiments
 
-5. Experiment Extraction
+5. PDF Download (optional)
+   ↓
+   Download full-text PDFs for functional papers
+
+6. Experiment Extraction
    ↓
    Extract detailed experiment information using LLM
+   (Standard or Agentic extraction mode)
 
-6. Evidence Integration
+7. Evidence Integration
    ↓
-   Consolidate experiments and make PS3/BS3 call
+   Consolidate experiments and make PS3/BS3 call with strength
 
-7. Report Generation
+8. Report Generation
    ↓
-   Generate HTML report and/or dictionary output
+   Generate HTML/PDF report and/or dictionary output
 ```
 
 ---
@@ -517,8 +634,11 @@ The pipeline follows this automated workflow:
 ### Optional
 - `NCBI_API_KEY` - Increases NCBI rate limits
 - `LLM_TEMPERATURE` - Randomness (0-1, default: 0)
-- `LLM_PROVIDER` - Provider choice (default: openai)
-- `LLM_MODEL` - Model override
+- `LLM_PROVIDER` - Provider choice (openai, anthropic, gemini; default: openai)
+- `LLM_MODEL` - Model override (default depends on provider)
+- `USE_AGENTIC_EXTRACTION` - Enable agentic extraction by default (default: false)
+- `AGENTIC_VLM_MODEL` - Vision model for agentic extraction (default: gpt-4o-mini)
+- `USE_PADDLEOCR` - Force PaddleOCR on macOS (default: false, uses EasyOCR)
 
 ---
 
@@ -540,29 +660,50 @@ The pipeline follows this automated workflow:
 ### Literature Not Found
 
 **Error:** No papers found in LitVar2
-- **Solution:** Normal for some variants. Try alternate variant identifiers (rsID, HGVSc, HGVSp)
+- **Solution:** Normal for some variants. The pipeline will still attempt VEP annotation.
 
 ### HTML Generation Fails
 
 **Error:** Failed to generate HTML report
 - **Solution:** Use `--output-format dict` instead, or check browser can open HTML files
 
+### PDF Generation Fails
+
+**Error:** WeasyPrint not available
+- **Solution:** Install system dependencies and WeasyPrint (see Installation section)
+
 ### Timeout Issues
 
 **Error:** API timeout or no response
 - **Solution:** Try again later, check internet connection, verify APIs are accessible
 
+### Agentic Extraction Issues
+
+**Error:** OCR engine not available
+- **Solution:** Install EasyOCR (`pip install easyocr`) or PaddleOCR (`pip install paddleocr paddlepaddle`)
+
+**Error:** PaddleOCR segfault on macOS
+- **Solution:** Use EasyOCR instead (default on macOS) or set `USE_PADDLEOCR=false`
+
+**Error:** poppler not found (pdf2image)
+- **Solution:** Install poppler system package:
+  - macOS: `brew install poppler`
+  - Ubuntu: `sudo apt-get install poppler-utils`
+
+**Error:** LayoutReader model download fails
+- **Solution:** Ensure internet connection; models are downloaded on first use (~2GB)
+
 ---
 
 ## Performance Tips
 
-1. **First run is slower** due to API calls and PDF downloads
-2. **Model selection affects speed/accuracy**
-3. **Batch processing**: Create scripts to analyze multiple variants
-4. **Cache results**: Save HTML reports for documentation
+1. **First run is slower** due to API calls, PDF downloads, and model downloads (agentic mode)
+2. **Model selection affects speed/accuracy**: `gpt-4o-mini` is faster, `gpt-4o` is more accurate
+3. **Batch processing**: Use `interactive=False` for automated pipelines
+4. **Cache results**: Save HTML/PDF reports for documentation
+5. **Agentic mode**: Only use when needed for complex documents (slower but more thorough)
 
 ---
-
 
 ## Citation
 
@@ -572,6 +713,4 @@ If you use this pipeline in research, please cite:
 AcmGENTIC: PS3/BS3 Functional Evidence Analysis Pipeline
 Available at: https://github.com/AliSaadatV/AcmGENTIC
 ```
-
-
 

@@ -306,12 +306,23 @@ Examples:
         default=False,
         help="Disable interactive prompts (e.g., manual PDF download)"
     )
+    parser.add_argument(
+        "--agentic",
+        action="store_true",
+        default=False,
+        help="Use agentic document extraction with OCR, layout detection, and VLM tools (requires paddleocr, pdf2image, transformers)"
+    )
 
     args = parser.parse_args()
 
     # Override model if specified via command line
     if args.model:
         os.environ["LLM_MODEL"] = args.model
+
+    # Enable agentic extraction if requested
+    if args.agentic:
+        os.environ["USE_AGENTIC_EXTRACTION"] = "true"
+        print("Agentic document extraction enabled")
 
     # Ensure PDF directory exists
     pdf_dir = Path(args.pdf_path)

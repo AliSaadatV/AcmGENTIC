@@ -27,6 +27,13 @@ _PROVIDER_DEFAULTS = {
 
 LLM_MODEL = os.getenv("LLM_MODEL", _PROVIDER_DEFAULTS.get(LLM_PROVIDER, "gpt-4o-mini"))
 
+# Agentic extraction settings
+USE_AGENTIC_EXTRACTION = os.getenv("USE_AGENTIC_EXTRACTION", "false").lower() == "true"
+# Vision model for agentic extraction. Options:
+# - "gpt-4o-mini" (default, cheaper, but sometimes fails on complex images)
+# - "gpt-4o" (recommended for better vision, more accurate table/chart extraction)
+AGENTIC_VLM_MODEL = os.getenv("AGENTIC_VLM_MODEL", "gpt-4o-mini")
+
 # API endpoints
 LITVAR2_API_BASE = "https://www.ncbi.nlm.nih.gov/research/litvar2-api"
 ENTREZ_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"

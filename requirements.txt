@@ -9,6 +9,7 @@ langchain-core>=0.1.0
 metapub>=0.4.2
 
 # LLM Provider Options (install one or more)
+# ----------------------------------------
 # OpenAI (recommended default)
 langchain-openai>=0.0.1
 openai>=1.0.0
@@ -21,6 +22,40 @@ anthropic>=0.18.0
 langchain-google-genai>=0.0.1
 google-generativeai>=0.4.0
 
-# PDF Report Generation (optional - requires system dependencies)
-# See README.md for system library installation instructions
+# PDF Report Generation (optional)
+# ----------------------------------------
+# Requires system dependencies - see README.md for installation instructions:
+#   - macOS: brew install cairo pango gdk-pixbuf libffi
+#   - Ubuntu: sudo apt-get install libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev
 weasyprint>=60.0
+
+# Agentic Document Extraction (optional - for --agentic flag)
+# ----------------------------------------
+# Requires poppler system dependency for pdf2image:
+#   - macOS: brew install poppler
+#   - Ubuntu: sudo apt-get install poppler-utils
+#   - Windows: Download from https://github.com/oschwartz10612/poppler-windows/releases
+
+# PDF to image conversion
+pdf2image>=1.16.0
+Pillow>=10.0.0
+
+# Image processing
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Deep learning for layout detection and reading order
+transformers>=4.30.0
+torch>=2.0.0
+layoutreader>=0.1.0
+
+# OCR Options (install at least one for agentic extraction)
+# ----------------------------------------
+# EasyOCR - recommended for macOS (more stable, no segfault issues)
+easyocr>=1.7.0
+
+# PaddleOCR - alternative OCR engine
+# Note: May cause segfaults on macOS; use EasyOCR instead
+# If you need PaddleOCR, uncomment the following lines:
+# paddleocr>=2.7.0
+# paddlepaddle>=2.5.0  # CPU version; use paddlepaddle-gpu for GPU acceleration

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS3/BS3 Analysis Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f0fdfa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #0d9488;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            border-left: 4px solid #0d9488;
+            padding-left: 20px;
+        }
+        .section h2 {
+            font-size: 1.8em;
+            color: #0d9488;
+            margin-bottom: 15px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .info-card {
+            background: #f0fdfa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #99f6e4;
+        }
+        .info-card .label {
+            font-weight: bold;
+            color: #0d9488;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        .info-card .value {
+            font-size: 1.1em;
+            margin-top: 5px;
+            word-break: break-word;
+        }
+        .assessment-box {
+            background: #f0fdfa;
+            border: 2px solid #0d9488;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .assessment-decision {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .ps3 {
+            color: #d32f2f;
+        }
+        .bs3 {
+            color: #388e3c;
+        }
+        .none {
+            color: #f57c00;
+        }
+        .narrative {
+            font-size: 1.05em;
+            line-height: 1.8;
+            margin-top: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background: #f0fdfa;
+            color: #0d9488;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #0d9488;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        tr:hover {
+            background: #f0fdfa;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+        .badge-paper {
+            background: #ccfbf1;
+            color: #0d9488;
+        }
+        .badge-experiment {
+            background: #d1fae5;
+            color: #047857;
+        }
+        .badge-supporting {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+        .badge-ambiguous {
+            background: #ffe0b2;
+            color: #e65100;
+        }
+        .badge-pathogenic {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+        .badge-benign {
+            background: #fff9c4;
+            color: #f57f17;
+        }
+        .experiment-item {
+            background: #fafafa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-left: 4px solid #14b8a6;
+        }
+        .experiment-item .key {
+            font-weight: 600;
+            color: #0f766e;
+        }
+        .footer {
+            background: #f0fdfa;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #99f6e4;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .stat-box {
+            flex: 1;
+            min-width: 150px;
+            background: #f0fdfa;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #0d9488;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PS3/BS3 Functional Evidence Analysis</h1>
+            <p>ACMG/AMP Variant Classification Report (PS3/BS3 criteria) </p>
+        </div>
+
+        <div class="content">
+            <!-- Variant Information Section -->
+            <div class="section">
+                <h2>1. Variant Information</h2>
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="label">Genomic Coordinates</div>
+                        <div class="value">2:162277580</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="label">Alleles</div>
+                        <div class="value">C → A</div>
+                    </div>
+                    <div class="info-card"><div class="label">Gene Symbol</div><div class="value">IFIH1</div></div>
+                    <div class="info-card"><div class="label">rsID</div><div class="value">rs35744605</div></div>
+                    <div class="info-card"><div class="label">HGVSc</div><div class="value">ENST00000649979.2:c.1879G>T</div></div>
+                    <div class="info-card"><div class="label">HGVSp</div><div class="value">ENSP00000497271.1:p.Glu627Ter</div></div>
+                </div>
+            </div>
+
+            <!-- Literature Summary Section -->
+            <div class="section">
+                <h2>2. Literature Summary</h2>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-number">73</div>
+                        <div class="stat-label">Candidate Papers</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">19</div>
+                        <div class="stat-label">Functional Papers</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">18</div>
+                        <div class="stat-label">Experiments</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Experiments Section -->
+            <div class="section">
+                <h2>3. Functional Experiments</h2>
+                
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 1 (Title: Loss-of-function mutations E6 27X and I923V of IFIH1 are associated with lower poly(I:C)-induced interferon-β production in peripheral blood mononuclear cells of type 1 diabetes patients. PMID: 20736039)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses specific variants of the IFIH1 gene (E627X and I923V) and their association with decreased poly(I:C)-induced interferon-β production in peripheral blood mononuclear cells. This indicates a wet-lab functional assay outcome related to the variants, fulfilling the criteria for functional evidence.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> ELISA</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> Human PBMCs</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> IFN-β secretion levels (pg/ml)</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> 620 ± 336 (infected T1D patients) vs 1360 ± 422 (noninfected controls), p < 0.0001</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> PBMCs from healthy controls and T1D patients used for comparisons; statistical significance assessed using Mann–Whitney U test.</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> E627X mutation results in reduced IFN-β production in response to poly(I:C) stimulation in T1D patients.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 2 (Title: Reduced expression of IFIH1 is protective for type 1 diabetes. PMID: 20844740)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses the rare alleles, including rs35744605 (Glu627X), and presents experimental evidence of reduced IFIH1 expression through allele-specific expression analysis and quantitative PCR assays. This indicates a functional impact related to the variants, fulfilling the criteria for functional evidence.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Quantitative PCR assay</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> Human PBMCs</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> Level of IFIH1 mRNA detected</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> No significant change in IFIH1 mRNA levels detected in resting immune cells.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Control individuals without variants were used as comparators.</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> The Glu627X mutation leads to reduced expression of IFIH1 protein in heterozygous individuals.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 3 (Title: Admixture mapping in lupus identifies multiple functional variants within IFIH1 associated with apoptosis, inflammation, and autoantibody production. PMID: 23441136)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses multiple variants in the IFIH1 gene, including missense variants, and provides experimental validation of the intronic SNP's functional impact on protein binding and transcriptional activity. This indicates a clear link between the genetic variants and their functional consequences in the context of apoptosis and inflammation.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> apoptosis assay</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> K562 leukemia cell line</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> Percentage of apoptotic cells by FACS</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> 14.6% average increase between risk allele 'A' versus protective allele 'G', P = 0.014</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Cells transfected with non-conditional vectors did not induce apoptosis</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> Risk 'A' allele for rs10930046 significantly increases apoptosis compared to protective 'G' allele.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 4 (Title: Gain-of-function mutations in IFIH1 cause a spectrum of human disease phenotypes associated with upregulated type I interferon signaling. PMID: 24686847)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses heterozygous mutations in IFIH1 and describes cellular and biochemical assays that demonstrate these mutations confer gain of function, leading to increased interferon signaling. This indicates a clear functional impact of the variant on gene product function.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> cellular and biochemical assays</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> not specified</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> interferon signaling</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> gain_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> not specified</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> not specified</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> mutant IFIH1 binds RNA more avidly, leading to increased baseline and ligand-induced interferon signaling</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 5 (Title: The A946T variant of the RNA sensor IFIH1 mediates an interferon program that limits viral infection but increases the risk for autoimmunity. PMID: 28553952)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses the IFIH1T946 variant and its impact on type I interferon production in both human cells and a knock-in mouse model. It provides evidence of functional outcomes, such as heightened interferon production and enhanced survival in viral challenges, linking the variant to specific functional assays.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> cytokine production</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> human peripheral blood mononuclear cells (PBMCs)</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> production of type I interferons</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> strong_loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> heightened basal and ligand-triggered production</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> compared to cells expressing wildtype IFIH1</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> The A946T variant mediates an interferon program that limits viral infection but increases the risk for autoimmunity.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 6 (Title: The A946T variant of the RNA sensor IFIH1 mediates an interferon program that limits viral infection but increases the risk for autoimmunity. PMID: 28553952)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses the IFIH1T946 variant and its impact on type I interferon production in both human cells and a knock-in mouse model. It provides evidence of functional outcomes, such as heightened interferon production and enhanced survival in viral challenges, linking the variant to specific functional assays.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> viral challenge</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> mice with a knock-in mutation encoding IFIH1 T946</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> survival after lethal viral challenge</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> strong_loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> enhanced basal expression of type I interferons</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> compared to wildtype mice</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> Mice with IFIH1 T946 displayed enhanced survival against viral infection.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 7 (Title: The A946T variant of the RNA sensor IFIH1 mediates an interferon program that limits viral infection but increases the risk for autoimmunity. PMID: 28553952)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses the IFIH1T946 variant and its impact on type I interferon production in both human cells and a knock-in mouse model. It provides evidence of functional outcomes, such as heightened interferon production and enhanced survival in viral challenges, linking the variant to specific functional assays.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> autoimmunity models</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> mice with a knock-in mutation encoding IFIH1 T946</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> penetrance in autoimmune models</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> strong_loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> increased penetrance in autoimmune models</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> compared to wildtype mice</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> The variant increases the risk of autoimmunity.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 8 (Title: Recurrent rhinovirus infections in a child with inherited MDA5 deficiency. PMID: 28606988)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses a homozygous missense mutation in IFIH1 that leads to impaired recognition of dsRNA and reduced IFN induction. It provides evidence from functional assays showing that mutant MDA5 fails to drive luciferase activity and that cells expressing mutant MDA5 have increased replication of HRV, indicating a clear functional impact of the variant.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Luciferase reporter assay</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> 293T cells</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> Luciferase activity driven by IFNB1, ISRE, or NF-κB promoter</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> K365E mutation showed minimal activity above nontransfected cells.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Comparative controls with wild-type MDA5.</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> K365E failed to drive luciferase activity from IFN-stimulated response element (ISRE)- and NF-κB-driven promoters, indicating impaired function.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 9 (Title: Exome-wide association study reveals novel psoriasis susceptibility locus at TNFSF15 and rare protective alleles in genes contributing to type I IFN signalling. PMID: 28973304)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses protective rare variants in IFIH1, including the specific variant p.Glu627Ter, and mentions that these variants disrupt conserved protein domains, suggesting a functional impact on protein function. This indicates that there is experimental evidence linking the variant to a functional outcome in the context of type I IFN signaling.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> gene-based association test</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> exome array</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> association P-value</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> pburden=2.53×10^-7; OR=0.707</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Standard quality control procedures applied</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> The variants have significant protective associations against psoriasis risk.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 10 (Title: Recurrent and Prolonged Infections in a Child with a Homozygous IFIH1 Nonsense Mutation. PMID: 29018476)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses a homozygous nonsense mutation in IFIH1 and reports Western blot analysis showing absence of wild type MDA5/IFIH1 protein, indicating a functional consequence of the variant. This aligns with the criteria for functional evidence as it links the variant to a measurable outcome in protein expression.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Western blot analysis</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> cultured fibroblasts of the patient</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> absence of wild type MDA5/IFIH1</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> strong_loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> compatible with NMD</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Not specified in the text</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> Homozygous loss of IFIH1 defines a novel Mendelian immunodeficiency disorder that increases susceptibility to severe viral infections.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 11 (Title: Breaching Self-Tolerance to Alu Duplex RNA Underlies MDA5-Mediated Inflammation. PMID: 29395326)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses variants of MDA5, including the specific variant of interest, and describes functional outcomes related to the variant's ability to recognize dsRNA and form signaling-competent filaments. This indicates a wet-lab functional assay with a clear outcome related to the variant's effect on protein function.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> IRF3 dimerization assay</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> Cell-free system using cytosolic extract from 293T cells</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> IRF3 dimerization as measured by native gel electrophoresis</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> IRF3 dimerization stimulated significantly in the presence of dsRNA</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> K63-linked polyubiquitin was used to stabilize oligomers; controls involving GST-2CARD</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> G495R variant enhances IRF3 dimerization in response to specific dsRNAs, indicating aberrant signaling</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 12 (Title: IFIH1 loss-of-function variants contribute to very early-onset inflammatory bowel disease. PMID: 34185153)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses loss-of-function variants in the IFIH1 gene and describes the use of luciferase reporter assays to assess MDA5 activity, indicating a wet-lab functional assay. It also mentions the impact of these variants on MDA5 function and their association with Very Early Onset Inflammatory Bowel Disease, providing a clear outcome related to the variants.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Luciferase reporter assay</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> 293T human cells</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> Normalized luciferase activity</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> Robust activity induced by wild-type MDA5; p.Glu627Ter failed to activate the IFNB1 promoter.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Empty vector and wild-type controls included during transfection</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> The p.Glu627Ter variant results in complete loss of MDA5 function.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 13 (Title: Human enteric viruses autonomously shape inflammatory bowel disease phenotype through divergent innate immunomodulation. PMID: 35394816)</span> <span class="badge badge-benign">supports_benign</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract mentions 'loss-of-function mutations within virus sensor MDA5' and discusses the detrimental consequences for IBD patient-derived intestinal epithelial cells, indicating a functional impact related to the genetic variant. This suggests that the variant affects the function of the gene product in a disease-relevant context.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> ELISA</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> primary human macrophages</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> IL-10 levels</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> no_effect_vs_wildtype</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> IL-10 levels significantly higher in non-IBD virome treatment</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Mock control using unexposed macrophages confirmed baseline levels of IL-10.</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> Healthy enteric viromes maintain intestinal immunity by promoting anti-inflammatory responses.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 14 (Title: Human enteric viruses autonomously shape inflammatory bowel disease phenotype through divergent innate immunomodulation. PMID: 35394816)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract mentions 'loss-of-function mutations within virus sensor MDA5' and discusses the detrimental consequences for IBD patient-derived intestinal epithelial cells, indicating a functional impact related to the genetic variant. This suggests that the variant affects the function of the gene product in a disease-relevant context.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Transfection</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> HEK293T cells</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> IFN-β luciferase activity</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> MDA5E627X exhibited significantly reduced IFN-β activity compared to wild-type.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Comparative analysis with wild-type MDA5 confirmed loss of function in mutant forms.</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> Loss-of-function variants in MDA5 lead to impaired antiviral responses to enteric viromes.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 15 (Title: Age-dependent effect of the IFIH1/MDA5 gene variants on the risk of critical COVID-19. PMID: 36434151)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses the IFIH1 variant rs35744605 (p.Glu627Stop) and its association with increased blood IL6 levels at ICU admission, indicating a functional outcome related to the variant. Additionally, it mentions the impact of IFIH1 variants on gene expression and IFN response, linking these to the severity of COVID-19.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Genotyping</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> Real-time PCR Taqman assays</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> Genotype frequencies</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> Significant association with critical COVID-19 severity (p=0.70), no allelic difference noted.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Sequencing PCR fragments with different genotypes were used to validate the genotyping method.</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> No significant differences were noted for rs35744605; however, its association with recurrent viral infections suggests a potential role in COVID-19 severity.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 16 (Title: MDA5-dependent responses contribute to autoimmune diabetes progression and hindrance. PMID: 36512407)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses mutations in IFIH1, specifically mentioning an in-frame deletion within the ATPase site of MDA5 (ΔHel1), and provides functional evidence that ΔHel1 MDA5 protein had reduced ATP hydrolysis compared to wild-type MDA5. This indicates a wet-lab functional assay with an outcome related to the variant's effect on protein function.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Flow cytometry analysis</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> In vitro analysis of pancreatic cells from NOD, ΔHel1, and KO female mice</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> Cell frequency and counts of proinflammatory macrophages</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> PE-PM comparisons showed significant differences, concluding that variant impact varies by context.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Comparison between uninfected and infected mice; independent replication of results</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> MDA5 mutations affect proinflammatory responses, directly impacting autoimmune processes</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 17 (Title: IFIH1 and DDX58 gene variants in pediatric rheumatic diseases. PMID: 37342449)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract discusses several IFIH1 variants, including p.E627X, and reports elevated IFN-I scores in patients with these variants, indicating a functional consequence linked to the gene product's activity in the immune response. This suggests that the variants have an impact on the function of the IFIH1 protein, fulfilling the criteria for functional evidence.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Real-time PCR</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> RNA-based assay</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> IFN-I score</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> Elevated IFN-I scores in patients with variant.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Standard controls used for gene expression analysis.</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> Presence of variants associated with hyperactivation of IFN-I signaling pathway.</p>
+        </div>
+        
+        <div class="experiment-item" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="margin-bottom: 10px;"><span class="key">Experiment 18 (Title: IFN-I Score and Rare Genetic Variants in Children with Systemic Lupus Erythematosus. PMID: 38927451)</span> <span class="badge badge-pathogenic">supports_pathogenic</span></div>
+            <p style="margin-bottom: 8px;"><span class="key">Justification of Paper Inclusion:</span> The abstract mentions rare genetic variants associated with SLE, including specific variant details for IFIH1, and indicates that the majority of these variants are functionally related to nucleic acid sensing and IFN-signaling, suggesting a wet-lab functional assay context.</p>
+            <p style="margin-bottom: 8px;"><span class="key">Assay Type:</span> Whole-exome sequencing (WES)</p>
+            <p style="margin-bottom: 8px;"><span class="key">System:</span> Clinical sequencing</p>
+            <p style="margin-bottom: 8px;"><span class="key">Readout:</span> Identification of genetic variants</p>
+            <p style="margin-bottom: 8px;"><span class="key">Effect Direction:</span> loss_of_function</p>
+            <p style="margin-bottom: 8px;"><span class="key">Magnitude & Stats:</span> Identified variant likely associated with SLE, functionally relevant to nucleic acid sensing</p>
+            <p style="margin-bottom: 8px;"><span class="key">Controls & Quality:</span> Validation according to ACMG criteria and ClinVar data</p>
+            <p style="margin-bottom: 0;"><span class="key">Authors' Conclusion:</span> Variant c.1879G>T (p.E627X) found in 2 patients; associated with SLE pathogenesis.</p>
+        </div>
+        
+            </div>
+
+            <!-- Assessment Section -->
+            <div class="section">
+                <h2>4. ACMG/AMP Assessment</h2>
+                <div class="assessment-box">
+                    <div class="assessment-decision">
+                        Decision: 
+                        <span class="ps3">
+                            PS3
+                        </span>
+                    </div>
+                    <div class="stat-label">Strength: STRONG</div>
+                    <div class="stat-label">Confidence: high</div>
+                    <div class="narrative">
+                        The majority of functional studies consistently demonstrate a loss of function associated with the p.Glu627Ter variant in IFIH1, particularly in assays measuring IFN-β production and signaling. The evidence is supported by multiple independent studies with robust controls and statistical significance, indicating that this variant likely impairs the protein's function, consistent with a pathogenic mechanism. The overall quality of the assays and the consistency of the results across different experimental setups strengthen the classification.
+                    </div>
+                    <p style="margin-top: 15px; font-size: 0.9em;"><strong>Key PMIDs:</strong> 20736039, 20844740, 23441136, 24686847, 28553952, 28606988, 28973304, 29018476, 29395326, 34185153, 35394816, 36434151, 36512407, 37342449, 38927451</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Report generated by PS3/BS3 Analysis Pipeline</p>
+            <p>For more information, visit: <a href="https://github.com/AliSaadatV/AcmGENTIC" style="color: #0d9488;">AcmGENTIC on GitHub</a></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -722,14 +722,30 @@ def _extract_from_pdf(
     """
     Extract experiments from full-text PDF using the comprehensive schema.
     
-    Supports multiple LLM providers:
+    Supports multiple extraction modes:
+    - Agentic: Uses OCR, layout detection, and VLM tools (page-by-page)
+    - Simple: Uses provider-specific PDF upload APIs
+    
+    Supports multiple LLM providers for simple mode:
     - OpenAI: Uses file upload with responses API
     - Anthropic/Claude: Uses base64-encoded PDF with messages API
     - Gemini: Uses file upload with generative AI API
     """
-    from .config import LLM_PROVIDER
+    from .config import LLM_PROVIDER, USE_AGENTIC_EXTRACTION
     
-    # Dispatch to provider-specific implementation
+    # Check if agentic extraction is enabled
+    if USE_AGENTIC_EXTRACTION:
+        try:
+            from .agentic_extraction import extract_experiments_agentic
+            return extract_experiments_agentic(pdf_path, variant_label, pmid)
+        except ImportError as e:
+            print(f"   Warning: Agentic extraction dependencies not available: {e}")
+            print(f"   Falling back to simple extraction...")
+        except Exception as e:
+            print(f"   Warning: Agentic extraction failed: {e}")
+            print(f"   Falling back to simple extraction...")
+    
+    # Dispatch to provider-specific implementation (simple mode)
     if LLM_PROVIDER == "openai":
         return _extract_from_pdf_openai(pmid, variant_label, pdf_path, title)
     elif LLM_PROVIDER == "anthropic":
